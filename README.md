@@ -1,1 +1,0 @@
-# sylndr_sniper
