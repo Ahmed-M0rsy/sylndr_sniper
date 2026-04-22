@@ -48,23 +48,48 @@ def scrape_and_snip():
         seen_texts = set()
 
         for card in cards:
-            text = card.get_text(separator=' ', strip=True)
-            if (text.startswith('Market') or text.startswith('Certified')) and text not in seen_texts:
-                seen_texts.add(text)
+    text = card.get_text(separator=' ', strip=True)
+    if (text.startswith('Market') or text.startswith('Certified')) and text not in seen_texts:
+        seen_texts.add(text)
+        
+        try:
+            match = re.search(r'(Market|Certified)\s+(.*?)\s+(\d{4})\s+.*?\s+([\dK]+)\s+KM.*?([\d,]+)\s+EGP', text)
+            if match:
+                # Try to find the href in the card or parent element
+                link = '#'
+                if card.name == 'a' and card.get('href'):
+                    link = card.get('href')
+                elif card.find_parent('a'):
+                    link = card.find_parent('a').get('href', '#')
                 
-                try:
-                    match = re.search(r'(Market|Certified)\s+(.*?)\s+(\d{4})\s+.*?\s+([\dK]+)\s+KM.*?([\d,]+)\s+EGP', text)
-                    if match:
-                        results.append({
-                            'Car': match.group(2),
-                            'Year': match.group(3),
-                            'Mileage': match.group(4),
-                            'Price_EGP': match.group(5),
-                            # IMPORTANT: Create the unique Fingerprint right here
-                            'Fingerprint': f"{match.group(2)}_{match.group(5)}_{match.group(4)}"
-                        })
-                except Exception:
-                    continue
+                results.append({
+                    'Car': match.group(2),
+                    'Year': match.group(3),
+                    'Mileage': match.group(4),
+                    'Price_EGP': match.group(5),
+                    'Fingerprint': f"{match.group(2)}_{match.group(5)}_{match.group(4)}",
+                    'URL': link  # Add this!
+                })
+        except Exception:
+            continue
+        # for card in cards:
+        #     text = card.get_text(separator=' ', strip=True)
+        #     if (text.startswith('Market') or text.startswith('Certified')) and text not in seen_texts:
+        #         seen_texts.add(text)
+                
+        #         try:
+        #             match = re.search(r'(Market|Certified)\s+(.*?)\s+(\d{4})\s+.*?\s+([\dK]+)\s+KM.*?([\d,]+)\s+EGP', text)
+        #             if match:
+        #                 results.append({
+        #                     'Car': match.group(2),
+        #                     'Year': match.group(3),
+        #                     'Mileage': match.group(4),
+        #                     'Price_EGP': match.group(5),
+        #                     # IMPORTANT: Create the unique Fingerprint right here
+        #                     'Fingerprint': f"{match.group(2)}_{match.group(5)}_{match.group(4)}"
+        #                 })
+        #         except Exception:
+        #             continue
 
         df_new = pd.DataFrame(results).drop_duplicates()
         
@@ -80,12 +105,24 @@ def scrape_and_snip():
         if not new_entries.empty:
             print(f"🔥 Found {len(new_entries)} new cars!")
             for _, row in new_entries.iterrows():
+                # Handle relative URLs
+                car_url = row['URL']
+                if car_url.startswith('/'):
+                    car_url = 'https://sylndr.com' + car_url
+                
                 msg = (f"🚀 *New Car Found!*\n"
                        f"🚗 *Model:* {row['Car']} ({row['Year']})\n"
                        f"💰 *Price:* {row['Price_EGP']} EGP\n"
                        f"🛣️ *Mileage:* {row['Mileage']} KM\n"
-                       f"🔗 [View on Sylndr](https://sylndr.com/en/cars)")
+                       f"🔗 [View on Sylndr]({car_url})")
                 send_telegram_msg(msg)
+            # for _, row in new_entries.iterrows():
+            #     msg = (f"🚀 *New Car Found!*\n"
+            #            f"🚗 *Model:* {row['Car']} ({row['Year']})\n"
+            #            f"💰 *Price:* {row['Price_EGP']} EGP\n"
+            #            f"🛣️ *Mileage:* {row['Mileage']} KM\n"
+            #            f"🔗 [View on Sylndr](https://sylndr.com/en/cars)")
+            #     send_telegram_msg(msg)
             
             # Save the new list so it can be committed back to GitHub
             updated_db = pd.concat([pd.DataFrame({'Fingerprint': seen_fingerprints}), new_entries[['Fingerprint']]])
