@@ -48,30 +48,30 @@ def scrape_and_snip():
         seen_texts = set()
 
         for card in cards:
-    text = card.get_text(separator=' ', strip=True)
-    if (text.startswith('Market') or text.startswith('Certified')) and text not in seen_texts:
-        seen_texts.add(text)
-        
-        try:
-            match = re.search(r'(Market|Certified)\s+(.*?)\s+(\d{4})\s+.*?\s+([\dK]+)\s+KM.*?([\d,]+)\s+EGP', text)
-            if match:
-                # Try to find the href in the card or parent element
-                link = '#'
-                if card.name == 'a' and card.get('href'):
-                    link = card.get('href')
-                elif card.find_parent('a'):
-                    link = card.find_parent('a').get('href', '#')
+            text = card.get_text(separator=' ', strip=True)
+            if (text.startswith('Market') or text.startswith('Certified')) and text not in seen_texts:
+                seen_texts.add(text)
                 
-                results.append({
-                    'Car': match.group(2),
-                    'Year': match.group(3),
-                    'Mileage': match.group(4),
-                    'Price_EGP': match.group(5),
-                    'Fingerprint': f"{match.group(2)}_{match.group(5)}_{match.group(4)}",
-                    'URL': link  # Add this!
-                })
-        except Exception:
-            continue
+                try:
+                    match = re.search(r'(Market|Certified)\s+(.*?)\s+(\d{4})\s+.*?\s+([\dK]+)\s+KM.*?([\d,]+)\s+EGP', text)
+                    if match:
+                        # Try to find the href in the card or parent element
+                        link = '#'
+                        if card.name == 'a' and card.get('href'):
+                            link = card.get('href')
+                        elif card.find_parent('a'):
+                            link = card.find_parent('a').get('href', '#')
+                        
+                        results.append({
+                            'Car': match.group(2),
+                            'Year': match.group(3),
+                            'Mileage': match.group(4),
+                            'Price_EGP': match.group(5),
+                            'Fingerprint': f"{match.group(2)}_{match.group(5)}_{match.group(4)}",
+                            'URL': link  # Add this!
+                        })
+                except Exception:
+                    continue
         # for card in cards:
         #     text = card.get_text(separator=' ', strip=True)
         #     if (text.startswith('Market') or text.startswith('Certified')) and text not in seen_texts:
